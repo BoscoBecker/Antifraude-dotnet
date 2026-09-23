@@ -1,0 +1,62 @@
+# Postgres + pgAdmin — rede antifraud-net
+# Credenciais: docker/pgadmin/.env (copiar de .env.example)
+#
+# Do Windows: Host=localhost; Port=5432
+# pgAdmin → Postgres: Host=my-postgres; Port=5432
+# pgAdmin UI: http://localhost:15432/login
+
+services:
+  my-postgres:
+    container_name: my-postgres
+    image: postgres:16
+    networks:
+      - antifraud-net
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em docker/pgadmin/.env}
+      POSTGRES_DB: ${POSTGRES_DB:-antifraud}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/ddl.sql:/docker-entrypoint-initdb.d/01-antifraud-ddl.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-antifraud}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  my-pgadmin:
+    container_name: my-pgadmin
+    image: dpage/pgadmin4:latest
+    networks:
+      - antifraud-net
+    env_file:
+      - .env
+    depends_on:
+      my-postgres:
+        condition: service_healthy
+    ports:
+      - "15432:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Defina PGADMIN_DEFAULT_EMAIL em docker/pgadmin/.env}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Defina PGADMIN_DEFAULT_PASSWORD em docker/pgadmin/.env}
+      PGADMIN_CONFIG_SERVER_MODE: "True"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./servers.json:/pgadmin4/servers.json:ro
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  antifraud-net:
+    name: antifraud-net
+    driver: bridge

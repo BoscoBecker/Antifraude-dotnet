@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "AntiFraud (my-postgres)",
+      "Group": "Docker",
+      "Host": "my-postgres",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    }
+  }
+}

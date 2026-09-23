@@ -1,0 +1,31 @@
+# Build context: raiz do repositório Tecnica/
+FROM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
+WORKDIR /src
+
+COPY AntiFraud/AntiFraud.sln AntiFraud/
+COPY AntiFraud/src/AntiFraud.Domain/AntiFraud.Domain.csproj AntiFraud/src/AntiFraud.Domain/
+COPY AntiFraud/src/AntiFraud.Application/AntiFraud.Application.csproj AntiFraud/src/AntiFraud.Application/
+COPY AntiFraud/src/AntiFraud.Infrastructure/AntiFraud.Infrastructure.csproj AntiFraud/src/AntiFraud.Infrastructure/
+COPY AntiFraud/src/AntiFraud.Api/AntiFraud.Api.csproj AntiFraud/src/AntiFraud.Api/
+
+RUN dotnet restore AntiFraud/src/AntiFraud.Api/AntiFraud.Api.csproj
+
+COPY AntiFraud/src/ AntiFraud/src/
+RUN dotnet publish AntiFraud/src/AntiFraud.Api/AntiFraud.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-jammy AS final
+WORKDIR /app
+
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /app/publish .
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD curl -f http://127.0.0.1:8080/swagger/index.html || exit 1
+
+ENTRYPOINT ["dotnet", "AntiFraud.Api.dll"]

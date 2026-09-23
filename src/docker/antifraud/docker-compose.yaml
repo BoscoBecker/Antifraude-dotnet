@@ -1,0 +1,58 @@
+# AntiFraud API + Worker (Linux). Infra: docker/pgadmin + docker/rabbitmq antes.
+#
+# Swagger: http://localhost:5080/swagger
+# Rede: antifraud-net (externa)
+
+services:
+  antifraud-api:
+    container_name: antifraud-api
+    build:
+      context: ../..
+      dockerfile: docker/antifraud/Dockerfile.api
+    image: antifraud-api:local
+    networks:
+      - antifraud-net
+    env_file:
+      - .env
+    ports:
+      - "5080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__AntiFraud: Host=${POSTGRES_HOST:-my-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-antifraud};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD em docker/antifraud/.env}
+      Features__UseRabbitMq: ${USE_RABBITMQ:-true}
+      RabbitMq__HostName: ${RABBITMQ_HOST:-my-rabbitmq}
+      RabbitMq__Port: ${RABBITMQ_PORT:-5672}
+      RabbitMq__UserName: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER em docker/antifraud/.env}
+      RabbitMq__Password: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS em docker/antifraud/.env}
+      RabbitMq__ExchangeName: antifraud.events
+      RabbitMq__QueueName: antifraud.transactions
+      RabbitMq__RoutingKey: transaction.received
+    restart: unless-stopped
+
+  antifraud-worker:
+    container_name: antifraud-worker
+    build:
+      context: ../..
+      dockerfile: docker/antifraud/Dockerfile.worker
+    image: antifraud-worker:local
+    networks:
+      - antifraud-net
+    env_file:
+      - .env
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__AntiFraud: Host=${POSTGRES_HOST:-my-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-antifraud};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD em docker/antifraud/.env}
+      Features__UseRabbitMq: ${USE_RABBITMQ:-true}
+      RabbitMq__HostName: ${RABBITMQ_HOST:-my-rabbitmq}
+      RabbitMq__Port: ${RABBITMQ_PORT:-5672}
+      RabbitMq__UserName: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER em docker/antifraud/.env}
+      RabbitMq__Password: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS em docker/antifraud/.env}
+      RabbitMq__ExchangeName: antifraud.events
+      RabbitMq__QueueName: antifraud.transactions
+      RabbitMq__RoutingKey: transaction.received
+    restart: unless-stopped
+
+networks:
+  antifraud-net:
+    external: true
+    name: antifraud-net
