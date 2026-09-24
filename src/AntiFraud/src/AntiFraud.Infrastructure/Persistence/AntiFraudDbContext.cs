@@ -4,13 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AntiFraud.Infrastructure.Persistence;
 
-public sealed class AntiFraudDbContext : DbContext, IUnitOfWork
+public sealed class AntiFraudDbContext(DbContextOptions<AntiFraudDbContext> options) : DbContext(options), IUnitOfWork
 {
-    public AntiFraudDbContext(DbContextOptions<AntiFraudDbContext> options)
-        : base(options)
-    {
-    }
-
     public DbSet<TransactionEntity> Transactions => Set<TransactionEntity>();
     public DbSet<FraudEvaluationEntity> FraudEvaluations => Set<FraudEvaluationEntity>();
     public DbSet<AuditLogEntity> AuditLogs => Set<AuditLogEntity>();

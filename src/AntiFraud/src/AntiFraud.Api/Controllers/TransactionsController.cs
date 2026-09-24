@@ -6,19 +6,11 @@ namespace AntiFraud.Api.Controllers;
 
 [ApiController]
 [Route("transactions")]
-public sealed class TransactionsController : ControllerBase
+public sealed class TransactionsController(ITransactionService transactionService) : ControllerBase
 {
     private const string IdempotencyHeader = "Idempotency-Key";
-    private readonly ITransactionService _transactionService;
+    private readonly ITransactionService _transactionService = transactionService;
 
-    public TransactionsController(ITransactionService transactionService)
-    {
-        _transactionService = transactionService;
-    }
-
-    /// <summary>
-    /// Recebe uma transação para avaliação antifraude. Requer header Idempotency-Key.
-    /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(TransactionResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(TransactionResponse), StatusCodes.Status200OK)]

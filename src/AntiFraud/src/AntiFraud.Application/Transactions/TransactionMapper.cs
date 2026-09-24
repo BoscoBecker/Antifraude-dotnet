@@ -18,10 +18,10 @@ internal static class TransactionMapper
     private static string MapDecision(FraudDecision decision) =>
         decision switch
         {
-            FraudDecision.Pending => "PENDING",
+            FraudDecision.Pending  => "PENDING",
             FraudDecision.Approved => "APPROVED",
             FraudDecision.Rejected => "REJECTED",
-            FraudDecision.Review => "REVIEW",
+            FraudDecision.Review   => "REVIEW",
             _ => decision.ToString().ToUpperInvariant()
         };
 }

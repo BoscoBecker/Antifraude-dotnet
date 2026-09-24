@@ -10,21 +10,15 @@ namespace AntiFraud.Infrastructure.Messaging;
 /// <summary>
 /// Processa outbox no Worker (funciona com API e Worker em processos separados).
 /// </summary>
-public sealed class OutboxTransactionDispatchWorker : BackgroundService
+public sealed class OutboxTransactionDispatchWorker(
+    IServiceProvider serviceProvider,
+    ILogger<OutboxTransactionDispatchWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
     private const int BatchSize = 20;
 
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<OutboxTransactionDispatchWorker> _logger;
-
-    public OutboxTransactionDispatchWorker(
-        IServiceProvider serviceProvider,
-        ILogger<OutboxTransactionDispatchWorker> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
+    private readonly ILogger<OutboxTransactionDispatchWorker> _logger = logger;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

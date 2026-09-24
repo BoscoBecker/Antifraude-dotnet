@@ -112,9 +112,7 @@ public sealed class Transaction : AggregateRoot
     public void BeginProcessing()
     {
         if (Status is not (TransactionStatus.Queued or TransactionStatus.Received))
-        {
             throw new InvalidOperationException($"Cannot begin processing from status {Status}.");
-        }
 
         Status = TransactionStatus.Processing;
         ProcessingAttempts++;
@@ -123,9 +121,7 @@ public sealed class Transaction : AggregateRoot
     public void CompleteEvaluation(FraudDecision decision, string reason, IReadOnlyList<RuleEvaluationResult> ruleResults)
     {
         if (Status != TransactionStatus.Processing)
-        {
             throw new InvalidOperationException("Transaction must be processing to complete evaluation.");
-        }
 
         Decision = decision;
         DecisionReason = reason;
@@ -133,10 +129,8 @@ public sealed class Transaction : AggregateRoot
         CompletedAtUtc = DateTime.UtcNow;
 
         foreach (var result in ruleResults)
-        {
             _evaluations.Add(FraudEvaluationEntry.Create(result.RuleCode, result.Passed, result.Score, result.Message));
-        }
-
+        
         Raise(new TransactionEvaluatedEvent(Id, decision, reason));
     }
 
@@ -150,8 +144,6 @@ public sealed class Transaction : AggregateRoot
     private void EnsureStatus(TransactionStatus expected)
     {
         if (Status != expected)
-        {
             throw new InvalidOperationException($"Expected status {expected}, current {Status}.");
-        }
     }
 }

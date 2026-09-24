@@ -5,14 +5,9 @@ using AntiFraud.Infrastructure.Persistence.Entities;
 
 namespace AntiFraud.Infrastructure.Audit;
 
-public sealed class EfAuditLogger : IAuditLogger
+public sealed class EfAuditLogger(AntiFraudDbContext context) : IAuditLogger
 {
-    private readonly AntiFraudDbContext _context;
-
-    public EfAuditLogger(AntiFraudDbContext context)
-    {
-        _context = context;
-    }
+    private readonly AntiFraudDbContext _context = context;
 
     public async Task LogAsync(string action, Guid? transactionId, string payload, CancellationToken cancellationToken)
     {

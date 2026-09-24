@@ -4,14 +4,9 @@ using AntiFraud.Infrastructure.Persistence.Entities;
 
 namespace AntiFraud.Infrastructure.Persistence;
 
-public sealed class OutboxStore : IOutboxStore
+public sealed class OutboxStore(AntiFraudDbContext context) : IOutboxStore
 {
-    private readonly AntiFraudDbContext _context;
-
-    public OutboxStore(AntiFraudDbContext context)
-    {
-        _context = context;
-    }
+    private readonly AntiFraudDbContext _context = context;
 
     public Task EnqueueTransactionReceivedAsync(Guid transactionId, CancellationToken cancellationToken)
     {

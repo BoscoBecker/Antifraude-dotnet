@@ -2,14 +2,9 @@ using AntiFraud.Domain.Transactions;
 
 namespace AntiFraud.Domain.Rules;
 
-public sealed class FraudRuleEngine
+public sealed class FraudRuleEngine(IEnumerable<IFraudRule> rules)
 {
-    private readonly IReadOnlyList<IFraudRule> _rules;
-
-    public FraudRuleEngine(IEnumerable<IFraudRule> rules)
-    {
-        _rules = rules.OrderBy(r => r.Order).ToList();
-    }
+    private readonly IReadOnlyList<IFraudRule> _rules = rules.OrderBy(r => r.Order).ToList();
 
     public (FraudDecision Decision, string Reason, IReadOnlyList<RuleEvaluationResult> Results) Evaluate(Transaction transaction)
     {
@@ -27,19 +22,11 @@ public sealed class FraudRuleEngine
         }
 
         if (results.Any(r => r.RuleCode == "BLOCKLIST" && !r.Passed))
-        {
             return (FraudDecision.Rejected, "Customer or device on blocklist.", results);
-        }
-
         if (totalScore >= 100)
-        {
             return (FraudDecision.Rejected, $"Risk score {totalScore} exceeded threshold.", results);
-        }
-
         if (totalScore >= 50)
-        {
             return (FraudDecision.Review, $"Risk score {totalScore} requires manual review.", results);
-        }
 
         return (FraudDecision.Approved, "All rules passed within acceptable risk.", results);
     }
