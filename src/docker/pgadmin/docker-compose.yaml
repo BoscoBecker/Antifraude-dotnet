@@ -1,6 +1,5 @@
 # Postgres + pgAdmin — rede antifraud-net
 # Credenciais: docker/pgadmin/.env (copiar de .env.example)
-#
 # Do Windows: Host=localhost; Port=5432
 # pgAdmin → Postgres: Host=my-postgres; Port=5432
 # pgAdmin UI: http://localhost:15432/login

@@ -1,5 +1,4 @@
 # AntiFraud API + Worker (Linux). Infra: docker/pgadmin + docker/rabbitmq antes.
-#
 # Swagger: http://localhost:5080/swagger
 # Rede: antifraud-net (externa)
 

@@ -1,5 +1,4 @@
 # RabbitMQ + Management UI — rede antifraud-net (externa; criada pelo compose Postgres)
-#
 # AMQP (host): localhost:5672
 # Management: http://localhost:15672
 # Credenciais: docker/rabbitmq/.env (RABBITMQ_DEFAULT_USER / RABBITMQ_DEFAULT_PASS)
@@ -20,6 +19,7 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?Defina RABBITMQ_DEFAULT_PASS em docker/rabbitmq/.env}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_logs:/var/log/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -30,7 +30,7 @@ services:
 
 volumes:
   rabbitmq_data:
-
+  rabbitmq_logs:
 networks:
   antifraud-net:
     external: true
