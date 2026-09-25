@@ -21,13 +21,13 @@ export const options = {
         { duration: "20s", target: 5 },
         { duration: "1m", target: 20 },
         { duration: "20s", target: 0 },
-      },
+      ],
       gracefulRampDown: "15s",
     },
   },
   thresholds: {
     http_req_failed: ["rate<0.08"],
-    "http_req_duration{name:POST /transactions}": ["p(95)<4000"],
+    http_req_duration: ["p(95)<4000"],
     checks: ["rate>0.90"],
   },
 };
@@ -45,11 +45,11 @@ export default function () {
   let scenario = "approved";
 
   if (roll >= 0.92) {
-    amount = 12_000;
+    amount = 12000;
     expected = "REVIEW";
     scenario = "review_high";
   } else if (roll >= 0.85) {
-    amount = 15_000;
+    amount = 15000;
     expected = bucket < 4 ? "REJECTED" : "REVIEW";
     scenario = "high_risk";
   }

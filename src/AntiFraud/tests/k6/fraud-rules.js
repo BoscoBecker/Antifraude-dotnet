@@ -37,7 +37,7 @@ export default function () {
   group("REVIEW — HIGH_AMOUNT (>= 10000)", () => {
     const customerId = `K6-HIGH-${runId}`;
     const { transactionId } = submitTransaction(
-      buildPayload({ customerId, amount: 10_000.0 }),
+      buildPayload({ customerId, amount: 10000.0 }),
       newIdempotencyKey("review-high"),
       { scenario: "review_high_amount" },
     );
@@ -80,7 +80,7 @@ export default function () {
     const { transactionId } = submitTransaction(
       buildPayload({
         customerId,
-        amount: 15_000.0,
+        amount: 15000.0,
         externalReference: `REJ-FINAL-${runId}`,
       }),
       newIdempotencyKey("reject-final"),
