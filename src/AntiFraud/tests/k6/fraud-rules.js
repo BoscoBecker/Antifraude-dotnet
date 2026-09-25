@@ -1,6 +1,6 @@
 /**
  * Cenários funcionais — regras de fraude (1 VU, sequencial).
- * Requer API + Worker (+ Rabbit se UseRabbitMq=true).
+ * Requer API + Worker + RabbitMQ.
  *
  * k6 run -e BASE_URL=http://localhost:5080 fraud-rules.js
  */

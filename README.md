@@ -60,21 +60,20 @@ Camadas (Clean Architecture + DDD):
 flowchart TB
     Client[Cliente / Gateway] --> API[AntiFraud.Api]
     API --> PG[(PostgreSQL)]
-    API -->|UseRabbitMq true| RMQ[(RabbitMQ)]
+    API -->|OutboxRabbitRelayWorker| RMQ[(RabbitMQ)]
     RMQ --> Worker[AntiFraud.Worker]
-    Worker -->|UseRabbitMq false| PG
     Worker --> PG
     Worker --> Rules[FraudRuleEngine + velocity]
     API --> Logs[Serilog / OpenTelemetry]
     Worker --> Logs
 ```
 
-**Modo mensageria** (`Features:UseRabbitMq` — **mesmo valor** na API e no Worker):
+**Mensageria (sempre RabbitMQ + outbox):**
 
-| Valor | API | Worker |
-|-------|-----|--------|
-| `true` | `OutboxRabbitRelayWorker` → Rabbit | `RabbitMqTransactionEvaluationConsumer` |
-| `false` | Só persiste outbox | `OutboxTransactionDispatchWorker` → lê outbox no Postgres |
+| Processo | Papel |
+|----------|--------|
+| **API** | Grava outbox no POST; `OutboxRabbitRelayWorker` publica na fila |
+| **Worker** | `RabbitMqTransactionEvaluationConsumer` → `ProcessAsync` |
 
 ### 3.3 Fluxo de ponta a ponta
 
@@ -97,13 +96,9 @@ sequenceDiagram
         API-->>C: 200 OK + mesmo payload
     end
 
-    alt UseRabbitMq true
-        API->>DB: Relay lê outbox pendente
-        API->>Q: Publish transactionId
-        Q->>W: Deliver message
-    else UseRabbitMq false
-        W->>DB: Poll outbox pendente
-    end
+    API->>DB: Relay lê outbox pendente
+    API->>Q: Publish transactionId
+    Q->>W: Deliver message
 
     W->>EV: ProcessAsync (regras + velocity)
     W->>DB: UPDATE decision + fraud_evaluations + audit
@@ -294,7 +289,6 @@ RABBITMQ_HOST=my-rabbitmq
 RABBITMQ_PORT=5672
 RABBITMQ_DEFAULT_USER=antifraud
 RABBITMQ_DEFAULT_PASS="MesmaSenhaDoRabbit"
-USE_RABBITMQ=true
 "@ | Out-File -Encoding utf8 .env
 ```
 
@@ -366,10 +360,7 @@ dotnet run --project src\AntiFraud\src\AntiFraud.Api
 
 Swagger (processo local): `http://localhost:5080/swagger` (`launchSettings.json` da API).
 
-`Features:UseRabbitMq` nos `appsettings.json` (API e Worker devem coincidir):
-
-- **`false`:** Worker processa a **outbox** no Postgres (Rabbit opcional).
-- **`true`:** API faz relay outbox → Rabbit; Worker consome a fila (credenciais Rabbit via User Secrets ou env).
+Suba **RabbitMQ** junto com Postgres (compose `src/docker/rabbitmq`). Credenciais em `RabbitMq` nos `appsettings` ou User Secrets / variáveis `RabbitMq__*`.
 
 Documentação da solução: [src/AntiFraud/README.md](src/AntiFraud/README.md).
 

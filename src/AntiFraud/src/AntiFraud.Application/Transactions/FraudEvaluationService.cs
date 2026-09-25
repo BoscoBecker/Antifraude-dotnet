@@ -33,10 +33,10 @@ public sealed class FraudEvaluationService(
 
         if (transaction.Status == TransactionStatus.Completed)
         {
+            _logger.LogWarning("Transaction {TransactionId} Completed", transactionId);
             return;
         }
 
-        /// Start transaction
         transaction.BeginProcessing();
 
         var recentCount = await _repository.CountRecentByCustomerAsync(
@@ -47,12 +47,13 @@ public sealed class FraudEvaluationService(
         var (decision, reason, results) = _ruleEngine.Evaluate(transaction);
         var mergedResults = results.ToList();
 
+        // Quantidade mínima de transações do mesmo customerId 
         if (recentCount >= VelocityThreshold)
         {
             mergedResults.Add(new RuleEvaluationResult(
                 "VELOCITY",
                 false,
-                70,
+                70, // Aplica penalidade
                 $"{recentCount} transactions in {VelocityWindow.TotalMinutes} minutes."));
 
             var totalScore = mergedResults.Where(r => !r.Passed).Sum(r => r.Score);
@@ -64,12 +65,10 @@ public sealed class FraudEvaluationService(
             };
         }
         transaction.CompleteEvaluation(decision, reason, mergedResults);
-        /// End transaction
         
         await _repository.UpdateAsync(transaction, cancellationToken);
         await _auditLogger.LogAsync("TRANSACTION_EVALUATED", transaction.Id, decision.ToString(), cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-
         _logger.LogInformation("Transaction {TransactionId} evaluated as {Decision}",transactionId,decision);
     }
 }
