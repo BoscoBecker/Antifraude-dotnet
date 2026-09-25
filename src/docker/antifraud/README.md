@@ -43,8 +43,7 @@ Dentro da rede Docker: Postgres `my-postgres`, RabbitMQ `my-rabbitmq` (não `loc
 | Variável | Descrição |
 |----------|-----------|
 | `POSTGRES_*` | Connection string da API/Worker |
-| `RABBITMQ_*` / `RABBITMQ_DEFAULT_*` | Broker (default `USE_RABBITMQ=true`) |
-| `USE_RABBITMQ` | `true` / `false` |
+| `RABBITMQ_*` / `RABBITMQ_DEFAULT_*` | Broker (obrigatório para API relay + Worker consumer) |
 
 ## Parar
 

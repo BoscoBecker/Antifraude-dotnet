@@ -25,15 +25,12 @@ Ver **[README raiz — §7.1](../../README.md)** e **[../docker/README.md](../do
 
 ### Host (API + Worker)
 
-1. Postgres (+ opcional Rabbit): compose em `src/docker/`
-2. User Secrets na API e Worker
+1. Postgres + RabbitMQ: compose em `src/docker/`
+2. User Secrets na API e Worker (Postgres + `RabbitMq`)
 3. `dotnet build AntiFraud.sln`
 4. `dotnet run --project src/AntiFraud.Worker` e `dotnet run --project src/AntiFraud.Api`
 
-`Features:UseRabbitMq` deve ser **igual** na API e no Worker:
-
-- **`false`:** Worker → `OutboxTransactionDispatchWorker`
-- **`true`:** API → `OutboxRabbitRelayWorker`; Worker → `RabbitMqTransactionEvaluationConsumer`
+**Fluxo:** POST → outbox (Postgres) → relay na **API** → Rabbit → consumer no **Worker** → decisão no Postgres.
 
 ## Testes
 

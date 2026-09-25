@@ -2,7 +2,7 @@
 
 Pasta de **stress** e **cenários de regras** contra `POST /transactions` e `GET /transactions/{id}`.
 
-**Pré-requisitos:** API + **Worker** no ar (Postgres; Rabbit se `UseRabbitMq: true`).
+**Pré-requisitos:** API + **Worker** + **RabbitMQ** no ar (Postgres).
 
 ## Instalar k6
 

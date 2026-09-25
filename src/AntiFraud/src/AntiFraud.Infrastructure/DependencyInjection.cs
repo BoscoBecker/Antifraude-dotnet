@@ -6,7 +6,6 @@ using AntiFraud.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 namespace AntiFraud.Infrastructure;
 
@@ -41,47 +40,29 @@ public static class DependencyInjection
         services.AddScoped<IOutboxStore, OutboxStore>();
         services.AddScoped<IOutboxProcessor, OutboxProcessor>();
 
-        var useRabbitMq = configuration.GetValue("Features:UseRabbitMq", false);
-        AddMessaging(services, hostRole, useRabbitMq);
+        AddRabbitMqMessaging(services, hostRole);
 
         return services;
     }
 
-    private static void AddMessaging(
+    /// <summary>
+    /// Outbox (Postgres) → relay na API → RabbitMQ → consumer no Worker → avaliação de fraude.
+    /// </summary>
+    private static void AddRabbitMqMessaging(
         IServiceCollection services,
-        InfrastructureHostRole hostRole,
-        bool useRabbitMq)
+        InfrastructureHostRole hostRole)
     {
-        if (useRabbitMq)
-        {
-            services.AddSingleton<RabbitMqTransactionQueuePublisher>();
-            services.AddSingleton<ITransactionQueuePublisher>(sp =>
-                sp.GetRequiredService<RabbitMqTransactionQueuePublisher>());
-
-            if (hostRole == InfrastructureHostRole.Api)
-            {
-                services.AddHostedService<OutboxRabbitRelayWorker>();
-            }
-            else
-            {
-                services.AddHostedService<RabbitMqTransactionEvaluationConsumer>();
-            }
-
-            return;
-        }
-
-        if (hostRole == InfrastructureHostRole.Worker)
-        {
-            services.AddSingleton<InMemoryTransactionQueuePublisher>();
-            services.AddSingleton<ITransactionQueuePublisher>(sp =>
-                sp.GetRequiredService<InMemoryTransactionQueuePublisher>());
-            services.AddHostedService<OutboxTransactionDispatchWorker>();
-            return;
-        }
-
-        // API sem Rabbit: outbox é processada pelo Worker (processo separado).
-        services.AddSingleton<InMemoryTransactionQueuePublisher>();
+        services.AddSingleton<RabbitMqTransactionQueuePublisher>();
         services.AddSingleton<ITransactionQueuePublisher>(sp =>
-            sp.GetRequiredService<InMemoryTransactionQueuePublisher>());
+            sp.GetRequiredService<RabbitMqTransactionQueuePublisher>());
+
+        if (hostRole == InfrastructureHostRole.Api)
+        {
+            services.AddHostedService<OutboxRabbitRelayWorker>();
+        }
+        else
+        {
+            services.AddHostedService<RabbitMqTransactionEvaluationConsumer>();
+        }
     }
 }

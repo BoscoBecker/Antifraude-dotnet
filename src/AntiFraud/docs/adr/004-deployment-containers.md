@@ -17,7 +17,7 @@ Produção pode evoluir para **Kubernetes** (HPA no worker, serviços gerenciado
 ## Consequências
 
 - API **stateless** — escala horizontal sem sticky session.
-- Worker escala consumindo a mesma fila Rabbit (modo `UseRabbitMq: true`) ou competindo na outbox (modo `false`).
+- Worker escala consumindo a mesma fila Rabbit (várias réplicas com prefetch/ack manual).
 - **DDL** aplicado via init do Postgres (`src/docker/pgadmin/scripts/ddl.sql`) ou script manual; aplicação **não** roda migrations nem `EnsureCreated`.
 - Credenciais via `.env` nos compose (não commitar); host local via **User Secrets** — ver [user-secrets.md](../user-secrets.md).
 

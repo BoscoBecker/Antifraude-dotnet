@@ -40,7 +40,6 @@ Login da UI = `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` do `.env`.
 Em `appsettings.json` (Api e Worker):
 
 ```json
-"Features": { "UseRabbitMq": true },
 "RabbitMq": {
   "HostName": "localhost",
   "Port": 5672,

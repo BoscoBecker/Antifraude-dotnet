@@ -18,7 +18,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__AntiFraud: Host=${POSTGRES_HOST:-my-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-antifraud};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD em docker/antifraud/.env}
-      Features__UseRabbitMq: ${USE_RABBITMQ:-true}
       RabbitMq__HostName: ${RABBITMQ_HOST:-my-rabbitmq}
       RabbitMq__Port: ${RABBITMQ_PORT:-5672}
       RabbitMq__UserName: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER em docker/antifraud/.env}
@@ -41,7 +40,6 @@ services:
     environment:
       DOTNET_ENVIRONMENT: Development
       ConnectionStrings__AntiFraud: Host=${POSTGRES_HOST:-my-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-antifraud};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD em docker/antifraud/.env}
-      Features__UseRabbitMq: ${USE_RABBITMQ:-true}
       RabbitMq__HostName: ${RABBITMQ_HOST:-my-rabbitmq}
       RabbitMq__Port: ${RABBITMQ_PORT:-5672}
       RabbitMq__UserName: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER em docker/antifraud/.env}

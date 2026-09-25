@@ -10,13 +10,11 @@ O módulo antifraude precisa desacoplar a ingestão HTTP da avaliação assíncr
 
 ## Decisão
 
-Adotar **RabbitMQ** (exchange topic + fila durable) como broker **opcional** (`Features:UseRabbitMq`), com **outbox transacional** no PostgreSQL:
+Adotar **RabbitMQ** (exchange topic + fila durable) como broker **obrigatório**, com **outbox transacional** no PostgreSQL:
 
 - **POST** grava transação + outbox no **mesmo commit** (sem publish direto no Rabbit).
-- **`UseRabbitMq: true`:** `OutboxRabbitRelayWorker` na **API** publica na fila; **Worker** consome (`RabbitMqTransactionEvaluationConsumer`).
-- **`UseRabbitMq: false`:** **Worker** lê outbox no Postgres (`OutboxTransactionDispatchWorker`) — sem broker.
-
-API e Worker devem usar o **mesmo** valor de `UseRabbitMq`.
+- **API:** `OutboxRabbitRelayWorker` lê outbox pendente e publica na fila.
+- **Worker:** `RabbitMqTransactionEvaluationConsumer` consome a fila e chama `ProcessAsync`.
 
 ## Alternativas consideradas
 
@@ -25,7 +23,7 @@ API e Worker devem usar o **mesmo** valor de `UseRabbitMq`.
 | **Kafka** | Alto throughput, retenção longa | Operação mais pesada para volume moderado de fraude |
 | **AWS SQS/SNS** | Gerenciado, DLQ nativa | Lock-in cloud, latência cross-region |
 | **RabbitMQ** | Routing flexível, operação madura on-prem | Throughput menor que Kafka |
-| **Só outbox (sem broker)** | Menos infra local | Polling no Postgres; escala horizontal via fila fica limitada |
+| **Só outbox (polling Postgres)** | Menos moving parts | Polling no banco; escala horizontal pior — **removido** para simplificar o projeto |
 
 ## Consequências (implementação atual)
 
@@ -39,5 +37,4 @@ API e Worker devem usar o **mesmo** valor de `UseRabbitMq`.
 
 - `OutboxRabbitRelayWorker`, `RabbitMqTransactionQueuePublisher` (API)
 - `RabbitMqTransactionEvaluationConsumer` (Worker)
-- `OutboxTransactionDispatchWorker` (Worker, modo sem Rabbit)
-- `DependencyInjection.AddMessaging`
+- `DependencyInjection.AddRabbitMqMessaging`
