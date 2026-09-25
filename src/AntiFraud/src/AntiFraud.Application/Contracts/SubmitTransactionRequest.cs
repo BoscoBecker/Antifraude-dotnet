@@ -8,4 +8,5 @@ public sealed record SubmitTransactionRequest(
     string Currency,
     string PaymentMethod,
     string? IpAddress,
-    string? DeviceFingerprint);
+    string? DeviceFingerprint
+ );

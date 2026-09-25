@@ -9,12 +9,9 @@ public sealed class FraudEvaluationEntry
     public string? Message { get; private set; }
     public DateTime EvaluatedAtUtc { get; private set; }
 
-    private FraudEvaluationEntry()
-    {
-    }
-
-    public static FraudEvaluationEntry Create(string ruleCode, bool passed, int score, string? message) =>
-        Rehydrate(Guid.NewGuid(), ruleCode, passed, score, message, DateTime.UtcNow);
+    private FraudEvaluationEntry() { }
+    public static FraudEvaluationEntry Create(string ruleCode, bool passed, int score, string? message) => 
+                  Rehydrate(Guid.NewGuid(), ruleCode, passed, score, message, DateTime.UtcNow);
 
     public static FraudEvaluationEntry Rehydrate(
         Guid id,

@@ -3,14 +3,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AntiFraud.Infrastructure.Persistence;
 
-public sealed class OutboxProcessor : IOutboxProcessor
+public sealed class OutboxProcessor(AntiFraudDbContext context) : IOutboxProcessor
 {
-    private readonly AntiFraudDbContext _context;
-
-    public OutboxProcessor(AntiFraudDbContext context)
-    {
-        _context = context;
-    }
+    private readonly AntiFraudDbContext _context = context;
 
     public async Task<IReadOnlyList<PendingOutboxMessage>> GetPendingAsync(int batchSize, CancellationToken cancellationToken)
     {

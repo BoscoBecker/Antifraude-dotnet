@@ -13,27 +13,21 @@ namespace AntiFraud.Infrastructure.Messaging;
 /// <summary>
 /// Publica mensagens da outbox no RabbitMQ (host da API).
 /// </summary>
-public sealed class OutboxRabbitRelayWorker : BackgroundService
+public sealed class OutboxRabbitRelayWorker(
+    IServiceProvider serviceProvider,
+    ILogger<OutboxRabbitRelayWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan RecoveryPublishCooldown = TimeSpan.FromMinutes(2);
     private static readonly ConcurrentDictionary<Guid, DateTime> RecoveryLastPublishUtc = new();
     private const int BatchSize = 20;
 
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<OutboxRabbitRelayWorker> _logger;
-
-    public OutboxRabbitRelayWorker(
-        IServiceProvider serviceProvider,
-        ILogger<OutboxRabbitRelayWorker> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
+    private readonly ILogger<OutboxRabbitRelayWorker> _logger = logger;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Outbox Rabbit relay worker started.");
+        _logger.LogInformation("Outbox Rabbit relay worker(API) started.");
 
         while (!stoppingToken.IsCancellationRequested)
         {

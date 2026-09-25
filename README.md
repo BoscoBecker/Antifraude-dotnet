@@ -43,8 +43,8 @@ Camadas (Clean Architecture + DDD):
 | **Domain** | `AntiFraud.Domain` | Agregado `Transaction`, value objects (`Money`, `IdempotencyKey`), motor de regras (`IFraudRule`, `FraudRuleEngine`), eventos de domínio |
 | **Application** | `AntiFraud.Application` | Casos de uso (`ITransactionService`, `IFraudEvaluationService`), orquestração, ports (`IOutboxStore`, `ITransactionQueuePublisher`) |
 | **Infrastructure** | `AntiFraud.Infrastructure` | EF Core + PostgreSQL, RabbitMQ, audit trail, outbox |
-| **API** | `AntiFraud.Api` | HTTP, validação de contrato, OpenTelemetry + Serilog |
-| **Worker** | `AntiFraud.Worker` | Consumo assíncrono e avaliação antifraude |
+| **API** | `AntiFraud.Api` | HTTP, contrato, Serilog; com Rabbit: relay outbox → fila |
+| **Worker** | `AntiFraud.Worker` | Avaliação antifraude (outbox ou fila Rabbit, conforme config) |
 
 **SOLID na prática**
 
@@ -60,19 +60,21 @@ Camadas (Clean Architecture + DDD):
 flowchart TB
     Client[Cliente / Gateway] --> API[AntiFraud.Api]
     API --> PG[(PostgreSQL)]
-    API --> RMQ[(RabbitMQ)]
+    API -->|UseRabbitMq true| RMQ[(RabbitMQ)]
     RMQ --> Worker[AntiFraud.Worker]
+    Worker -->|UseRabbitMq false| PG
     Worker --> PG
-    Worker --> Rules[Motor de Regras]
-    API --> OTEL[OpenTelemetry / Logs]
-    Worker --> OTEL
-    subgraph Integrações futuras
-        BL[Blocklist Service]
-        Geo[GeoIP / Device Intel]
-    end
-    Rules -.-> BL
-    Rules -.-> Geo
+    Worker --> Rules[FraudRuleEngine + velocity]
+    API --> Logs[Serilog / OpenTelemetry]
+    Worker --> Logs
 ```
+
+**Modo mensageria** (`Features:UseRabbitMq` — **mesmo valor** na API e no Worker):
+
+| Valor | API | Worker |
+|-------|-----|--------|
+| `true` | `OutboxRabbitRelayWorker` → Rabbit | `RabbitMqTransactionEvaluationConsumer` |
+| `false` | Só persiste outbox | `OutboxTransactionDispatchWorker` → lê outbox no Postgres |
 
 ### 3.3 Fluxo de ponta a ponta
 
@@ -81,37 +83,46 @@ sequenceDiagram
     participant C as Cliente
     participant API as AntiFraud.Api
     participant DB as PostgreSQL
-    participant Q as RabbitMQ / Channel
+    participant Q as RabbitMQ
     participant W as AntiFraud.Worker
-    participant R as FraudRuleEngine
+    participant EV as FraudEvaluationService
 
     C->>API: POST /transactions + Idempotency-Key
     API->>DB: Lookup idempotency_key
     alt Nova transação
         API->>DB: INSERT transaction + audit + outbox (1 txn)
-        API->>Q: Publish TransactionReceived
+        Note over API,DB: POST não publica no Rabbit diretamente
         API-->>C: 202 Accepted + id
     else Replay idempotente
         API-->>C: 200 OK + mesmo payload
     end
-    Q->>W: Deliver message
-    W->>DB: Load transaction (Queued)
-    W->>R: Evaluate rules + velocity
+
+    alt UseRabbitMq true
+        API->>DB: Relay lê outbox pendente
+        API->>Q: Publish transactionId
+        Q->>W: Deliver message
+    else UseRabbitMq false
+        W->>DB: Poll outbox pendente
+    end
+
+    W->>EV: ProcessAsync (regras + velocity)
     W->>DB: UPDATE decision + fraud_evaluations + audit
     C->>API: GET /transactions/{id}
     API->>DB: SELECT
     API-->>C: status + APPROVED|REJECTED|REVIEW
 ```
 
-### 3.4 Resiliência
+### 3.4 Resiliência (implementado vs. evolução)
 
 | Mecanismo | Onde | Comportamento |
 |-----------|------|----------------|
-| **Retry + backoff** | Outbox relay / consumer | Tentativas incrementais (`attempts`), jitter exponencial |
-| **DLQ** | `dead_letter_messages` | Mensagens que excedem max retries |
-| **Fallback** | API | Falha de publish → transação persistida; worker pode reprocessar via outbox polling |
-| **Circuit breaker** | Integrações externas (futuro) | Polly em blocklist/geo |
-| **At-least-once** | Fila | Idempotência no worker por status `Completed` |
+| **Outbox transacional** | POST + `outbox_messages` | Transação e evento pendente no mesmo commit |
+| **Retry outbox** | Relay / dispatch | `attempts` + `last_error`; pendências reprocessadas no loop (~2 s) |
+| **Publish failure** | `RabbitMqTransactionQueuePublisher` | Exceção propagada; outbox **não** marcada processada |
+| **At-least-once** | Rabbit + outbox | `ProcessAsync` ignora se `status = Completed`; ack/nack no consumer |
+| **Recovery** | `OutboxRabbitRelayWorker` | Republica transações QUEUED sem outbox pendente (cooldown) |
+| **DLQ / backoff exponencial** | — | **Não implementado** (sem tabela `dead_letter_messages` no DDL) |
+| **Circuit breaker** | — | **Futuro** (blocklist/geo) |
 
 ### 3.5 Idempotência e deduplicação
 
@@ -121,16 +132,25 @@ sequenceDiagram
 - Consumer ignora reprocessamento se decisão já finalizada.
 - Outbox republication usa `transactionId` como chave lógica.
 
-Detalhes: [ADR 003](AntiFraud/docs/adr/003-idempotencia.md).
+Detalhes: [ADR 003](src/AntiFraud/docs/adr/003-idempotencia.md).
 
 ### 3.6 Observabilidade
 
 | Pilar | Implementação |
 |-------|----------------|
-| **Logs** | Serilog estruturado (`Application`, `TransactionId`, `IdempotencyKey`) |
-| **Métricas** | `transactions_received_total`, `evaluation_duration_ms`, `decision_total{decision}`, `outbox_lag` |
-| **Tracing** | OpenTelemetry ASP.NET Core + HttpClient; propagar `traceparent` API → Worker |
+| **Logs** | Serilog na API e Worker (`Application`, contexto de transação) |
+| **Tracing** | OpenTelemetry (ASP.NET Core + HttpClient) na API |
 | **Auditoria** | Tabela `audit_logs` (`TRANSACTION_RECEIVED`, `TRANSACTION_EVALUATED`) |
+| **Métricas Prometheus customizadas** | **Não implementadas** (evolução futura) |
+
+### 3.7 Regras de risco (referência)
+
+| Regra | Condição (resumo) | Score se falhar |
+|-------|-------------------|-----------------|
+| `HIGH_AMOUNT` | Valor ≥ 10.000 | 60 |
+| `VELOCITY` | ≥ 5 transações do mesmo `customerId` em 10 min | 70 (aplicada no `FraudEvaluationService`) |
+
+Soma dos scores das regras que falharam: **≥ 100** → `REJECTED`; **≥ 50** → `REVIEW`; caso contrário → `APPROVED`.
 
 ---
 
@@ -210,10 +230,10 @@ Retorna status do processamento e decisão antifraude.
 
 | ADR | Tema |
 |-----|------|
-| [001 — Mensageria RabbitMQ](AntiFraud/docs/adr/001-mensageria-rabbitmq.md) | Fila + outbox |
-| [002 — PostgreSQL](AntiFraud/docs/adr/002-banco-postgresql.md) | Store relacional |
-| [003 — Idempotência](AntiFraud/docs/adr/003-idempotencia.md) | Dedup API e consumer |
-| [004 — Deployment](AntiFraud/docs/adr/004-deployment-containers.md) | Containers / K8s |
+| [001 — Mensageria RabbitMQ](src/AntiFraud/docs/adr/001-mensageria-rabbitmq.md) | Outbox + Rabbit opcional |
+| [002 — PostgreSQL](src/AntiFraud/docs/adr/002-banco-postgresql.md) | Store relacional |
+| [003 — Idempotência](src/AntiFraud/docs/adr/003-idempotencia.md) | Dedup API e consumer |
+| [004 — Deployment](src/AntiFraud/docs/adr/004-deployment-containers.md) | Docker Compose local |
 
 ---
 
@@ -351,6 +371,37 @@ Swagger (processo local): `http://localhost:5080/swagger` (`launchSettings.json`
 - **`false`:** Worker processa a **outbox** no Postgres (Rabbit opcional).
 - **`true`:** API faz relay outbox → Rabbit; Worker consome a fila (credenciais Rabbit via User Secrets ou env).
 
+Documentação da solução: [src/AntiFraud/README.md](src/AntiFraud/README.md).
+
+---
+
+### 7.3 Testes de stress e regras (k6)
+
+Pasta: **[src/AntiFraud/tests/k6/](src/AntiFraud/tests/k6/)** — instale o [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) (`winget install Grafana.k6` ou [releases](https://github.com/grafana/k6/releases)).
+
+Com **API + Worker** no ar:
+
+```powershell
+cd src\AntiFraud\tests\k6
+
+# Valida APPROVED / REVIEW / REJECTED (regras HIGH_AMOUNT + VELOCITY)
+k6 run -e BASE_URL=http://localhost:5080 fraud-rules.js
+
+# Stress com mix de transações aceitas e picos de risco
+k6 run -e BASE_URL=http://localhost:5080 stress-mixed.js
+```
+
+Guia completo: [src/AntiFraud/tests/k6/README.md](src/AntiFraud/tests/k6/README.md).
+
+### 7.4 Testes unitários (xUnit)
+
+```powershell
+cd src\AntiFraud
+dotnet test tests\AntiFraud.UnitTests\AntiFraud.UnitTests.csproj
+```
+
+Detalhes: [src/AntiFraud/tests/AntiFraud.UnitTests/README.md](src/AntiFraud/tests/AntiFraud.UnitTests/README.md).
+
 ---
 
 ## 8) Critérios de avaliação sugeridos (RH/Tech Lead)
@@ -370,11 +421,14 @@ Swagger (processo local): `http://localhost:5080/swagger` (`launchSettings.json`
 ```text
 ├── README.md
 └── src/
-    ├── docker/               ← pgadmin/, rabbitmq/, antifraud/
+    ├── docker/                    ← pgadmin/, rabbitmq/, antifraud/
     └── AntiFraud/
         ├── AntiFraud.sln
-        ├── docs/adr/
-        ├── scripts/ddl.sql
+        ├── docs/                  ← adr/, user-secrets.md
+        ├── scripts/               ← ddl.sql, setup-user-secrets.example.cmd
+        ├── tests/
+        │   ├── AntiFraud.UnitTests/  ← xUnit
+        │   └── k6/                   ← stress / fraud-rules
         └── src/
             ├── AntiFraud.Domain/
             ├── AntiFraud.Application/

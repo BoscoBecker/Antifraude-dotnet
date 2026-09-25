@@ -7,21 +7,15 @@ using RabbitMQ.Client;
 
 namespace AntiFraud.Infrastructure.Messaging;
 
-public sealed class RabbitMqTransactionQueuePublisher : ITransactionQueuePublisher, IAsyncDisposable, IDisposable
+public sealed class RabbitMqTransactionQueuePublisher(
+    IOptions<RabbitMqOptions> options,
+    ILogger<RabbitMqTransactionQueuePublisher> logger) : ITransactionQueuePublisher, IAsyncDisposable, IDisposable
 {
-    private readonly RabbitMqOptions _options;
-    private readonly ILogger<RabbitMqTransactionQueuePublisher> _logger;
+    private readonly RabbitMqOptions _options = options.Value;
+    private readonly ILogger<RabbitMqTransactionQueuePublisher> _logger = logger;
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private IConnection? _connection;
     private IChannel? _publishChannel;
-
-    public RabbitMqTransactionQueuePublisher(
-        IOptions<RabbitMqOptions> options,
-        ILogger<RabbitMqTransactionQueuePublisher> logger)
-    {
-        _options = options.Value;
-        _logger = logger;
-    }
 
     public async Task PublishTransactionReceivedAsync(Guid transactionId, CancellationToken cancellationToken)
     {
@@ -109,14 +103,9 @@ public sealed class RabbitMqTransactionQueuePublisher : ITransactionQueuePublish
     public async ValueTask DisposeAsync()
     {
         if (_publishChannel is not null)
-        {
             await _publishChannel.DisposeAsync();
-        }
-
         if (_connection is not null)
-        {
             await _connection.DisposeAsync();
-        }
 
         _initLock.Dispose();
     }

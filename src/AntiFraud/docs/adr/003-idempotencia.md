@@ -24,3 +24,9 @@ Clientes podem reenviar a mesma transação por timeout, retry HTTP ou entrega d
 
 - Colisão de chave com payload diferente → `409 Conflict` (evolução futura via hash do body).
 - Outbox relay deve ser idempotente ao republicar.
+- Implementação: `TransactionService`, `FraudEvaluationService.ProcessAsync`, `RabbitMqTransactionEvaluationConsumer`.
+
+## Referências
+
+- [ADR 001 — Mensageria](001-mensageria-rabbitmq.md)
+- Header e contrato: [README raiz — §4](../../../../README.md)

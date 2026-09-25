@@ -6,27 +6,18 @@ using Microsoft.Extensions.Logging;
 
 namespace AntiFraud.Application.Transactions;
 
-public sealed class TransactionService : ITransactionService
+public sealed class TransactionService(
+    ITransactionRepository repository,
+    IUnitOfWork unitOfWork,
+    IOutboxStore outboxStore,
+    IAuditLogger auditLogger,
+    ILogger<TransactionService> logger) : ITransactionService
 {
-    private readonly ITransactionRepository _repository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IOutboxStore _outboxStore;
-    private readonly IAuditLogger _auditLogger;
-    private readonly ILogger<TransactionService> _logger;
-
-    public TransactionService(
-        ITransactionRepository repository,
-        IUnitOfWork unitOfWork,
-        IOutboxStore outboxStore,
-        IAuditLogger auditLogger,
-        ILogger<TransactionService> logger)
-    {
-        _repository = repository;
-        _unitOfWork = unitOfWork;
-        _outboxStore = outboxStore;
-        _auditLogger = auditLogger;
-        _logger = logger;
-    }
+    private readonly ITransactionRepository _repository = repository;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IOutboxStore _outboxStore = outboxStore;
+    private readonly IAuditLogger _auditLogger = auditLogger;
+    private readonly ILogger<TransactionService> _logger = logger;
 
     public async Task<(TransactionResponse Response, bool Created)> SubmitAsync(
         string idempotencyKey,

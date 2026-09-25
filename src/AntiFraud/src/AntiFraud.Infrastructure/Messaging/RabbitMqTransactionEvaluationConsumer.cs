@@ -14,25 +14,18 @@ using RabbitMQ.Client.Events;
 
 namespace AntiFraud.Infrastructure.Messaging;
 
-public sealed class RabbitMqTransactionEvaluationConsumer : BackgroundService
+public sealed class RabbitMqTransactionEvaluationConsumer(
+    IServiceProvider serviceProvider,
+    IOptions<RabbitMqOptions> options,
+    ILogger<RabbitMqTransactionEvaluationConsumer> logger) : BackgroundService
 {
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> TransactionLocks = new();
 
-    private readonly IServiceProvider _serviceProvider;
-    private readonly RabbitMqOptions _options;
-    private readonly ILogger<RabbitMqTransactionEvaluationConsumer> _logger;
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
+    private readonly RabbitMqOptions _options = options.Value;
+    private readonly ILogger<RabbitMqTransactionEvaluationConsumer> _logger = logger;
     private IConnection? _connection;
     private IChannel? _channel;
-
-    public RabbitMqTransactionEvaluationConsumer(
-        IServiceProvider serviceProvider,
-        IOptions<RabbitMqOptions> options,
-        ILogger<RabbitMqTransactionEvaluationConsumer> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _options = options.Value;
-        _logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -167,14 +160,9 @@ public sealed class RabbitMqTransactionEvaluationConsumer : BackgroundService
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         if (_channel is not null)
-        {
             await _channel.DisposeAsync();
-        }
-
         if (_connection is not null)
-        {
             await _connection.DisposeAsync();
-        }
 
         await base.StopAsync(cancellationToken);
     }

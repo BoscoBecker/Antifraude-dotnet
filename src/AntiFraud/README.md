@@ -7,34 +7,46 @@ Documentação completa do desafio e arquitetura: **[../../README.md](../../READ
 Senhas e connection string **não** vão no Git. Configure uma vez:
 
 - Guia: **[docs/user-secrets.md](docs/user-secrets.md)**
-- Template de chaves: **[secrets.template.json](secrets.template.json)**
-- Script exemplo: **`scripts/setup-user-secrets.example.cmd`** (copie, edite senhas, execute)
+- Template: **[secrets.template.json](secrets.template.json)**
+- Script exemplo: **`scripts/setup-user-secrets.example.cmd`**
 
 ## Banco de dados (sem EF migrations)
 
-O schema **não** é criado pela aplicação. Use o DDL:
-
-- **Canônico:** `src/docker/pgadmin/scripts/ddl.sql`
+- **DDL canônico:** `../docker/pgadmin/scripts/ddl.sql`
 - **Cópia:** `scripts/ddl.sql`
 
-Na subida, API e Worker validam conexão e presença das tabelas (`DatabaseSchemaBootstrap`).
+Na subida, API e Worker validam conexão e tabelas (`DatabaseSchemaBootstrap`).
 
-## Executar localmente
+## Executar
 
-1. Subir Postgres (+ DDL): `docker compose` em `src/docker/pgadmin/`
-2. (Opcional) RabbitMQ: `src/docker/rabbitmq/`
-3. Configurar **User Secrets** (API + Worker) — ver acima
-4. Build e processos:
+### Docker (stack completa)
 
-```bash
-cd src/AntiFraud
-dotnet build AntiFraud.sln
-dotnet run --project src/AntiFraud.Api
-dotnet run --project src/AntiFraud.Worker
-```
+Ver **[README raiz — §7.1](../../README.md)** e **[../docker/README.md](../docker/README.md)**.
 
-**Sem RabbitMQ** (`UseRabbitMq: false` em `appsettings.json`): Worker processa outbox no Postgres.
+### Host (API + Worker)
 
-**Com RabbitMQ** (`UseRabbitMq: true`): API relay outbox → Rabbit; Worker consome a fila.
+1. Postgres (+ opcional Rabbit): compose em `src/docker/`
+2. User Secrets na API e Worker
+3. `dotnet build AntiFraud.sln`
+4. `dotnet run --project src/AntiFraud.Worker` e `dotnet run --project src/AntiFraud.Api`
 
-Docker app: `src/docker/antifraud/docker-compose.yaml` (variáveis de ambiente, não User Secrets).
+`Features:UseRabbitMq` deve ser **igual** na API e no Worker:
+
+- **`false`:** Worker → `OutboxTransactionDispatchWorker`
+- **`true`:** API → `OutboxRabbitRelayWorker`; Worker → `RabbitMqTransactionEvaluationConsumer`
+
+## Testes
+
+| Tipo | Pasta |
+|------|--------|
+| **Unitários (xUnit)** | [tests/AntiFraud.UnitTests/](tests/AntiFraud.UnitTests/) — `dotnet test` |
+| **Stress / fraude (k6)** | [tests/k6/README.md](tests/k6/README.md) |
+
+## ADRs
+
+| ADR | Arquivo |
+|-----|---------|
+| 001 Mensageria | [docs/adr/001-mensageria-rabbitmq.md](docs/adr/001-mensageria-rabbitmq.md) |
+| 002 PostgreSQL | [docs/adr/002-banco-postgresql.md](docs/adr/002-banco-postgresql.md) |
+| 003 Idempotência | [docs/adr/003-idempotencia.md](docs/adr/003-idempotencia.md) |
+| 004 Deployment | [docs/adr/004-deployment-containers.md](docs/adr/004-deployment-containers.md) |

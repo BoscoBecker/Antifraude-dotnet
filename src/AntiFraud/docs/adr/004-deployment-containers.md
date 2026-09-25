@@ -1,38 +1,28 @@
-# ADR 004 — Deployment em containers (Docker/Kubernetes)
-
-
+# ADR 004 — Deployment em containers (Docker)
 
 ## Status
 
-
-
 Aceito
-
-
 
 ## Contexto
 
-
-
-API e Worker escalam de forma independente; ambiente local utiliza **Docker Compose** na pasta `docker/`.
-
-
+API e Worker escalam de forma independente; ambiente local utiliza **Docker Compose** em `src/docker/`.
 
 ## Decisão
 
+Empacotar **AntiFraud.Api** e **AntiFraud.Worker** em imagens OCI (Dockerfiles em `src/docker/antifraud/`), orquestradas via **Docker Compose** no desenvolvimento. PostgreSQL e RabbitMQ em stacks separadas (`src/docker/pgadmin/`, `src/docker/rabbitmq/`), rede compartilhada `antifraud-net`.
 
-
-Empacotar **AntiFraud.Api** e **AntiFraud.Worker** em imagens OCI, orquestradas via **Kubernetes** (prod) ou **Docker Compose** (dev). PostgreSQL e RabbitMQ como serviços gerenciados ou containers side-by-side.
-
-
+Produção pode evoluir para **Kubernetes** (HPA no worker, serviços gerenciados de Postgres/Rabbit) — fora do escopo mínimo deste repositório.
 
 ## Consequências
 
+- API **stateless** — escala horizontal sem sticky session.
+- Worker escala consumindo a mesma fila Rabbit (modo `UseRabbitMq: true`) ou competindo na outbox (modo `false`).
+- **DDL** aplicado via init do Postgres (`src/docker/pgadmin/scripts/ddl.sql`) ou script manual; aplicação **não** roda migrations nem `EnsureCreated`.
+- Credenciais via `.env` nos compose (não commitar); host local via **User Secrets** — ver [user-secrets.md](../user-secrets.md).
 
+## Referências
 
-- HPA no worker baseado em lag da fila.
-
-- API stateless — escala horizontal sem sticky session.
-
-- Migrations/DDL aplicadas via job init ou pipeline, nunca drop automático em produção.
-
+- [README raiz — seção 7.1](../../../../README.md)
+- [src/docker/README.md](../../../docker/README.md)
+- [src/docker/antifraud/README.md](../../../docker/antifraud/README.md)
