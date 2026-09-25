@@ -27,7 +27,7 @@ public sealed class OutboxRabbitRelayWorker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Outbox Rabbit relay worker started.");
+        _logger.LogInformation("Outbox Rabbit relay worker(API) started.");
 
         while (!stoppingToken.IsCancellationRequested)
         {

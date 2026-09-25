@@ -22,7 +22,7 @@ public sealed class OutboxTransactionDispatchWorker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Outbox dispatch worker started.");
+        _logger.LogInformation("Outbox dispatch worker(service) started.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
