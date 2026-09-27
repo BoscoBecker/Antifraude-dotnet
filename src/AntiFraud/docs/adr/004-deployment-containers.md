@@ -6,11 +6,11 @@ Aceito
 
 ## Contexto
 
-API e Worker escalam de forma independente; ambiente local utiliza **Docker Compose** em `src/docker/`.
+API e Worker escalam de forma independente. **Desenvolvimento local** usa **.NET Aspire** (`AntiFraud.AppHost`) para Postgres, RabbitMQ, pgAdmin, API e Worker.
 
 ## Decisão
 
-Empacotar **AntiFraud.Api** e **AntiFraud.Worker** em imagens OCI (Dockerfiles em `src/docker/antifraud/`), orquestradas via **Docker Compose** no desenvolvimento. PostgreSQL e RabbitMQ em stacks separadas (`src/docker/pgadmin/`, `src/docker/rabbitmq/`), rede compartilhada `antifraud-net`.
+Empacotar **AntiFraud.Api** e **AntiFraud.Worker** em imagens OCI (Dockerfiles em `src/docker/antifraud/`). Manifests em `src/docker/` servem como **referência** de variáveis e rede para produção ou testes de imagem.
 
 Produção pode evoluir para **Kubernetes** (HPA no worker, serviços gerenciados de Postgres/Rabbit) — fora do escopo mínimo deste repositório.
 
@@ -18,11 +18,11 @@ Produção pode evoluir para **Kubernetes** (HPA no worker, serviços gerenciado
 
 - API **stateless** — escala horizontal sem sticky session.
 - Worker escala consumindo a mesma fila Rabbit (várias réplicas com prefetch/ack manual).
-- **DDL** aplicado via init do Postgres (`src/docker/pgadmin/scripts/ddl.sql`) ou script manual; aplicação **não** roda migrations nem `EnsureCreated`.
-- Credenciais via `.env` nos compose (não commitar); host local via **User Secrets** — ver [user-secrets.md](../user-secrets.md).
+- **DDL** via `src/AntiFraud/scripts/ddl.sql` (init Postgres Aspire + `DatabaseSchemaBootstrap`); aplicação **não** roda migrations nem `EnsureCreated`.
+- Credenciais locais: **User Secrets** — ver [user-secrets.md](../user-secrets.md) e [aspire.md](../aspire.md).
 
 ## Referências
 
-- [README raiz — seção 7.1](../../../../README.md)
+- [README raiz — seção 7](../../../../README.md)
+- [aspire.md](../aspire.md)
 - [src/docker/README.md](../../../docker/README.md)
-- [src/docker/antifraud/README.md](../../../docker/antifraud/README.md)

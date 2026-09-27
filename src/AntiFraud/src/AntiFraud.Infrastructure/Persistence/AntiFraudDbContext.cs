@@ -13,7 +13,7 @@ public sealed class AntiFraudDbContext(DbContextOptions<AntiFraudDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Tabelas/índices: docker/pgadmin/scripts/ddl.sql (sem EF migrations).
+        // Tabelas/índices: scripts/ddl.sql (sem EF migrations).
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AntiFraudDbContext).Assembly);
     }
 }

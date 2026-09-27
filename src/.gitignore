@@ -42,6 +42,10 @@ secrets.json
 *.pfx
 *.publishsettings
 
+# AntiFraud user-secrets export local (senhas)
+AntiFraud/scripts/user-secrets-export-*.txt
+user-secrets-comandos.local.txt
+
 # Docker / env
 .env
 .env.*

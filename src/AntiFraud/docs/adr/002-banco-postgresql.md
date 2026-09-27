@@ -25,9 +25,9 @@ Usar **PostgreSQL** relacional como system of record. Detalhes de regras e score
 - Índice único em `idempotency_key`.
 - Índice `(customer_id, created_at_utc)` para regra de velocity.
 - Event sourcing completo **não** adotado; audit trail via `audit_logs` + domínio.
-- Schema via DDL (`src/docker/pgadmin/scripts/ddl.sql`); sem EF migrations.
+- Schema via DDL (`src/AntiFraud/scripts/ddl.sql`); sem EF migrations.
 
 ## Referências
 
-- [DDL canônico](../../../docker/pgadmin/scripts/ddl.sql)
+- [DDL canônico](../../scripts/ddl.sql)
 - [ADR 001 — Outbox / RabbitMQ](001-mensageria-rabbitmq.md)

@@ -8,8 +8,6 @@ Pasta de **stress** e **cenários de regras** contra `POST /transactions` e `GET
 
 | Plataforma | Comando / link |
 |------------|----------------|
-| **Windows (winget)** | `winget install Grafana.k6` |
-| **Windows (Chocolatey)** | `choco install k6` |
 | **Documentação** | [Install k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) |
 | **Download binários** | [GitHub — grafana/k6 releases](https://github.com/grafana/k6/releases) |
 
@@ -69,17 +67,15 @@ k6 run -e BASE_URL=http://localhost:5080 --summary-export ../Results/fraud-rules
 
 ### Exemplo — `transactions.js` (execução local)
 
-Comando (PowerShell, pasta `tests/k6`):
-
-```powershell
-k6 run --out json=../Results/result-transactions.json .\transactions.js
+```bash
+k6 run --out json=../Results/result-transactions.json transactions.js
 ```
 
 Saída resumida (API + Worker no ar; ~2 min, cenário `steady_load`):
 
 ```text
      execution: local
-        script: .\transactions.js
+        script: transactions.js
         output: json (../Results/result-transactions.json)
 
      scenarios: (100.00%) 1 scenario, 25 max VUs, 2m10s max duration (incl. graceful stop):
@@ -130,9 +126,3 @@ steady_load ✓ [======================================] 00/25 VUs  2m0s
 | `POLL_MAX_ATTEMPTS` | `60` | Tentativas (~30 s) |
 | `VERIFY_DECISION` | `false` | `stress-mixed.js` aguarda decisão final |
 
-## Windows (PowerShell)
-
-```powershell
-cd D:\Tecnica\src\AntiFraud\tests\k6
-k6 run -e BASE_URL=http://localhost:5080 fraud-rules.js
-```

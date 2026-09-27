@@ -1,8 +1,8 @@
 -- AntiFraud schema — idempotente (IF NOT EXISTS)
 
--- Fonte canônica: docker/pgadmin/scripts/ddl.sql
+-- Fonte canônica deste repositório (AppHost, DatabaseSchemaBootstrap, espelho em docker/pgadmin/scripts/ddl.sql)
 
--- Deploy automático: docker/pgadmin/docker-compose.yaml (docker-entrypoint-initdb.d)
+-- Deploy automático: init Postgres no AppHost Aspire (postgres-init/ddl.sql)
 
 -- Banco: POSTGRES_DB (antifraud).
 
