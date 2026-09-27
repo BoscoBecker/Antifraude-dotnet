@@ -97,9 +97,21 @@ public sealed class RabbitMqTransactionEvaluationConsumer(
         await gate.WaitAsync(stoppingToken);
         try
         {
-            using var scope = _serviceProvider.CreateScope();
-            var evaluationService = scope.ServiceProvider.GetRequiredService<IFraudEvaluationService>();
-            await evaluationService.ProcessAsync(transactionId, CancellationToken.None);
+            using (_logger.BeginScope(new Dictionary<string, object>
+                   {
+                       ["TransactionId"] = transactionId,
+                       ["DeliveryTag"] = args.DeliveryTag
+                   }))
+            {
+                _logger.LogInformation("Processing antifraud evaluation for {TransactionId}", transactionId);
+
+                using var scope = _serviceProvider.CreateScope();
+                var evaluationService = scope.ServiceProvider.GetRequiredService<IFraudEvaluationService>();
+                await evaluationService.ProcessAsync(transactionId, CancellationToken.None);
+
+                _logger.LogInformation("Completed antifraud evaluation for {TransactionId}", transactionId);
+            }
+
             await _channel!.BasicAckAsync(args.DeliveryTag, false, stoppingToken);
         }
         catch (DbUpdateConcurrencyException ex)

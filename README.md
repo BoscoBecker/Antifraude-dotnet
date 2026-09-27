@@ -133,7 +133,7 @@ Detalhes: [ADR 003](src/AntiFraud/docs/adr/003-idempotencia.md).
 
 | Pilar | Implementação |
 |-------|----------------|
-| **Logs** | Serilog na API e Worker (`Application`, contexto de transação) |
+| **Logs** | Serilog na API e Worker; dashboard **Aspire** opcional (AppHost) |
 | **Tracing** | OpenTelemetry (ASP.NET Core + HttpClient) na API |
 | **Auditoria** | Tabela `audit_logs` (`TRANSACTION_RECEIVED`, `TRANSACTION_EVALUATED`) |
 | **Métricas Prometheus customizadas** | **Não implementadas** (evolução futura) |
@@ -228,13 +228,13 @@ Retorna status do processamento e decisão antifraude.
 | [001 — Mensageria RabbitMQ](src/AntiFraud/docs/adr/001-mensageria-rabbitmq.md) | Outbox + Rabbit opcional |
 | [002 — PostgreSQL](src/AntiFraud/docs/adr/002-banco-postgresql.md) | Store relacional |
 | [003 — Idempotência](src/AntiFraud/docs/adr/003-idempotencia.md) | Dedup API e consumer |
-| [004 — Deployment](src/AntiFraud/docs/adr/004-deployment-containers.md) | Docker Compose local |
+| [004 — Deployment](src/AntiFraud/docs/adr/004-deployment-containers.md) | Containers / Aspire local |
 
 ---
 
 ## 6) Modelo de dados (DDL)
 
-DDL canônico: `[src/docker/pgadmin/scripts/ddl.sql](src/docker/pgadmin/scripts/ddl.sql)` (cópia em `[src/AntiFraud/scripts/ddl.sql](src/AntiFraud/scripts/ddl.sql)`).  
+DDL canônico: `[src/AntiFraud/scripts/ddl.sql](src/AntiFraud/scripts/ddl.sql)`.  
 A aplicação **não usa EF migrations** nem `EnsureCreated`; API e Worker só validam conexão e tabelas.
 
 **Tabelas principais**
@@ -256,124 +256,44 @@ A aplicação **não usa EF migrations** nem `EnsureCreated`; API e Worker só v
 ### Pré-requisitos
 
 - .NET 8 SDK  
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Compose v2)  
-- Detalhes das stacks: `[src/docker/README.md](src/docker/README.md)`
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (runtime dos containers Aspire)  
+- **User Secrets** — [src/AntiFraud/docs/user-secrets.md](src/AntiFraud/docs/user-secrets.md)
+
+Configure **User Secrets** uma vez — passos em [src/AntiFraud/docs/user-secrets.md](src/AntiFraud/docs/user-secrets.md).
 
 ---
 
-### 7.1 Subir **todos** os containers (Postgres + pgAdmin + RabbitMQ + API + Worker)
+### 7.1 Rodar com **.NET Aspire** (padrão)
 
-Execute na **raiz do repositório** . Ordem: Postgres cria a rede `antifraud-net`; RabbitMQ e AntiFraud usam essa rede.
+Postgres, RabbitMQ, pgAdmin, API e Worker via AppHost + dashboard.
 
-#### Primeira vez — arquivos `.env`
-
-```powershell
-cd src\docker\pgadmin
-copy .env.example .env
-# Edite .env: POSTGRES_PASSWORD, PGADMIN_DEFAULT_PASSWORD (use aspas se a senha tiver #)
-
-cd src\docker\rabbitmq
-@"
-RABBITMQ_DEFAULT_USER=antifraud
-RABBITMQ_DEFAULT_PASS="SuaSenhaRabbitAqui"
-"@ | Out-File -Encoding utf8 .env
-
-cd src\docker\antifraud
-@"
-POSTGRES_HOST=my-postgres
-POSTGRES_PORT=5432
-POSTGRES_DB=antifraud
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD="MesmaSenhaDoPgAdmin"
-RABBITMQ_HOST=my-rabbitmq
-RABBITMQ_PORT=5672
-RABBITMQ_DEFAULT_USER=antifraud
-RABBITMQ_DEFAULT_PASS="MesmaSenhaDoRabbit"
-"@ | Out-File -Encoding utf8 .env
+```bash
+dotnet run --project src/AntiFraud/AntiFraud.AppHost/AntiFraud.AppHost.csproj --launch-profile https
 ```
-
-No **antifraud**, `POSTGRES_PASSWORD` e credenciais Rabbit devem ser **iguais** às de `pgadmin` e `rabbitmq`.
-
-#### Subir tudo (PowerShell)
-
-```powershell
-
-docker compose -f src/docker/pgadmin/docker-compose.yaml up -d
-docker compose -f src/docker/rabbitmq/docker-compose.yaml up -d
-docker compose -f src/docker/antifraud/docker-compose.yaml up -d --build
-
-docker ps --filter "name=my-postgres" --filter "name=my-pgadmin" --filter "name=my-rabbitmq" --filter "name=antifraud-"
-```
-
-#### Subir tudo (CMD)
-
-```cmd
-
-docker compose -f src\docker\pgadmin\docker-compose.yaml up -d
-docker compose -f src\docker\rabbitmq\docker-compose.yaml up -d
-docker compose -f src\docker\antifraud\docker-compose.yaml up -d --build
-```
-
-#### URLs e portas
 
 | Serviço | Endereço |
 |---------|----------|
-| **Swagger (API)** | http://localhost:5080/swagger |
-| **pgAdmin** | http://localhost:15432 |
-| **RabbitMQ Management** | http://localhost:15672 |
+| **Dashboard Aspire** | abre no browser ao subir o AppHost |
+| **Swagger (API)** | http://localhost:5080/swagger (confirmar no dashboard) |
+| **pgAdmin** | http://localhost:15433/login |
 | **PostgreSQL (host)** | `localhost:5432`, database `antifraud` |
 
-O **DDL** roda automaticamente na **primeira** inicialização do volume Postgres (`src/docker/pgadmin/scripts/ddl.sql`). Se o volume já existia sem tabelas, execute o script manualmente no pgAdmin ou recrie o volume.
+O **DDL** corre na 1ª inicialização do volume Postgres (`src/AntiFraud/scripts/ddl.sql`) e via `DatabaseSchemaBootstrap` na API/Worker.
 
-#### Parar todos os containers
+**Reset de dados/senha** (AppHost parado): `docker volume rm antifraud-aspire-postgres-data antifraud-aspire-rabbitmq-data` — detalhes em [aspire.md](src/AntiFraud/docs/aspire.md).
 
-```powershell
-
-docker compose -f src/docker/antifraud/docker-compose.yaml down
-docker compose -f src/docker/rabbitmq/docker-compose.yaml down
-docker compose -f src/docker/pgadmin/docker-compose.yaml down
-```
-
-Para remover também os volumes Postgres/pgAdmin/Rabbit (apaga dados):
-
-```powershell
-docker compose -f src/docker/pgadmin/docker-compose.yaml down -v
-docker compose -f src/docker/rabbitmq/docker-compose.yaml down -v
-```
+Documentação: [src/AntiFraud/README.md](src/AntiFraud/README.md).
 
 ---
 
-### 7.2 Rodar API + Worker no host (sem container da app)
+### 7.2 Testes de stress e regras (k6)
 
-Com Postgres no Docker (`localhost:5432`):
-
-1. **User Secrets** (senhas fora do Git): guia `[src/AntiFraud/docs/user-secrets.md](src/AntiFraud/docs/user-secrets.md)` ou script exemplo `src/AntiFraud/scripts/setup-user-secrets.example.cmd` (API + Worker, mesmos valores).
-2. Build e execução:
-
-```powershell
-
-dotnet build src\AntiFraud\AntiFraud.sln
-
-dotnet run --project src\AntiFraud\src\AntiFraud.Worker
-dotnet run --project src\AntiFraud\src\AntiFraud.Api
-```
-
-Swagger (processo local): `http://localhost:5080/swagger` (`launchSettings.json` da API).
-
-Suba **RabbitMQ** junto com Postgres (compose `src/docker/rabbitmq`). Credenciais em `RabbitMq` nos `appsettings` ou User Secrets / variáveis `RabbitMq__*`.
-
-Documentação da solução: [src/AntiFraud/README.md](src/AntiFraud/README.md).
-
----
-
-### 7.3 Testes de stress e regras (k6)
-
-Pasta: **[src/AntiFraud/tests/k6/](src/AntiFraud/tests/k6/)** — instale o [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) (`winget install Grafana.k6` ou [releases](https://github.com/grafana/k6/releases)).
+Pasta: **[src/AntiFraud/tests/k6/](src/AntiFraud/tests/k6/)** — instale o [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/).
 
 Com **API + Worker** no ar:
 
-```powershell
-cd src\AntiFraud\tests\k6
+```bash
+cd src/AntiFraud/tests/k6
 
 # Valida APPROVED / REVIEW / REJECTED (regras HIGH_AMOUNT + VELOCITY)
 k6 run -e BASE_URL=http://localhost:5080 fraud-rules.js
@@ -384,11 +304,11 @@ k6 run -e BASE_URL=http://localhost:5080 stress-mixed.js
 
 Guia completo: [src/AntiFraud/tests/k6/README.md](src/AntiFraud/tests/k6/README.md).
 
-### 7.4 Testes unitários (xUnit)
+### 7.3 Testes unitários (xUnit)
 
-```powershell
-cd src\AntiFraud
-dotnet test tests\AntiFraud.UnitTests\AntiFraud.UnitTests.csproj
+```bash
+cd src/AntiFraud
+dotnet test tests/AntiFraud.UnitTests/AntiFraud.UnitTests.csproj
 ```
 
 Detalhes: [src/AntiFraud/tests/AntiFraud.UnitTests/README.md](src/AntiFraud/tests/AntiFraud.UnitTests/README.md).
@@ -412,11 +332,12 @@ Detalhes: [src/AntiFraud/tests/AntiFraud.UnitTests/README.md](src/AntiFraud/test
 ```text
 ├── README.md
 └── src/
-    ├── docker/                    ← pgadmin/, rabbitmq/, antifraud/
+    ├── docker/                    ← Dockerfiles de referência (ADR 004); dev local = Aspire
     └── AntiFraud/
+        ├── AntiFraud.AppHost/
         ├── AntiFraud.sln
-        ├── docs/                  ← adr/, user-secrets.md
-        ├── scripts/               ← ddl.sql, setup-user-secrets.example.cmd
+        ├── docs/                  ← adr/, aspire.md, user-secrets.md
+        ├── scripts/               ← ddl.sql
         ├── tests/
         │   ├── AntiFraud.UnitTests/  ← xUnit
         │   └── k6/                   ← stress / fraud-rules

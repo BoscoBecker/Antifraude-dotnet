@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AntiFraud.Worker", "src\Ant
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AntiFraud.UnitTests", "tests\AntiFraud.UnitTests\AntiFraud.UnitTests.csproj", "{F2B3C4D5-E6F7-8901-ABCD-EF123456789C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AntiFraud.AppHost", "AntiFraud.AppHost\AntiFraud.AppHost.csproj", "{A9F1E2D3-C4B5-6789-0ABC-DEF123456789}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AntiFraud.ServiceDefaults", "AntiFraud.ServiceDefaults\AntiFraud.ServiceDefaults.csproj", "{B8E2D1C0-A9F8-7654-3210-FEDCBA987654}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,5 +49,13 @@ Global
 		{F2B3C4D5-E6F7-8901-ABCD-EF123456789C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F2B3C4D5-E6F7-8901-ABCD-EF123456789C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F2B3C4D5-E6F7-8901-ABCD-EF123456789C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9F1E2D3-C4B5-6789-0ABC-DEF123456789}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9F1E2D3-C4B5-6789-0ABC-DEF123456789}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9F1E2D3-C4B5-6789-0ABC-DEF123456789}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9F1E2D3-C4B5-6789-0ABC-DEF123456789}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8E2D1C0-A9F8-7654-3210-FEDCBA987654}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8E2D1C0-A9F8-7654-3210-FEDCBA987654}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8E2D1C0-A9F8-7654-3210-FEDCBA987654}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8E2D1C0-A9F8-7654-3210-FEDCBA987654}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -1,19 +1,33 @@
 # User Secrets (desenvolvimento local)
 
-Senhas **não** ficam em `appsettings.json`. Em Development, a API e o Worker carregam **User Secrets** (via `UserSecretsId` no `.csproj`).
+Senhas **não** ficam em `appsettings.json`. Em Development:
 
-Alinhe com `src/docker/pgadmin/.env` e `src/docker/rabbitmq/.env`.
+| Projeto | `UserSecretsId` |
+|---------|-----------------|
+| **AntiFraud.Api** | `antifraud-api-local-dev-8f4e2c1a-5b3d-4e6f-9a0b-1c2d3e4f5a6b` |
+| **AntiFraud.AppHost** | **o mesmo da API** (Postgres + Rabbit nos containers Aspire) |
+| **AntiFraud.Worker** | id próprio — **mesmos valores** de chaves |
 
-## 1. API
+Valores de referência podem ficar em `src/docker/pgadmin/.env` e `src/docker/rabbitmq/.env` (não commitados) — o AppHost lê credenciais via User Secrets.
+
+**Aspire:** se mudar a senha nos secrets após a 1ª subida do volume Postgres, apague os volumes Aspire — ver [aspire.md](aspire.md).
+
+## 1. API (e AppHost Aspire)
 
 ```bash
 cd src/AntiFraud/src/AntiFraud.Api
 
-dotnet user-secrets set "ConnectionStrings:AntiFraud" "Host=localhost;Port=5432;Database=antifraud;Username=postgres;Password=SUA_SENHA_POSTGRES"
+# Senha com #: Password='...' ou %23 — senão tudo após # é ignorado na connection string
+dotnet user-secrets set "ConnectionStrings:AntiFraud" "Host=localhost;Port=5432;Database=antifraud;Username=postgres;Password='SUA_SENHA_POSTGRES'"
 
 dotnet user-secrets set "RabbitMq:UserName" "antifraud"
 dotnet user-secrets set "RabbitMq:Password" "SUA_SENHA_RABBIT"
+
+dotnet user-secrets set "PgAdmin:DefaultEmail" "seu-email@example.com"
+dotnet user-secrets set "PgAdmin:DefaultPassword" "SUA_SENHA_POSTGRES"
 ```
+
+Com o **AppHost** no ar: `Host=localhost`, Postgres **5432**, Rabbit **5672** (AMQP).
 
 ## 2. Worker
 
@@ -26,23 +40,19 @@ dotnet user-secrets set "RabbitMq:UserName" "antifraud"
 dotnet user-secrets set "RabbitMq:Password" "SUA_SENHA_RABBIT"
 ```
 
-Use os **mesmos** valores na API e no Worker.
-
 ## 3. Conferir
 
 ```bash
 dotnet user-secrets list
 ```
 
+Para limpar: `dotnet user-secrets clear` (na pasta da API e do Worker).
+
 ## 4. Ambiente
 
-User Secrets só entram automaticamente com:
+- **API:** `ASPNETCORE_ENVIRONMENT=Development`
+- **Worker:** `DOTNET_ENVIRONMENT=Development`
 
-- **API:** `ASPNETCORE_ENVIRONMENT=Development` (padrão do `dotnet run` no template Web)
-- **Worker:** `DOTNET_ENVIRONMENT=Development` (padrão do `dotnet run` no Worker SDK)
+## 5. Produção
 
-## 5. Docker / produção
-
-Use variáveis de ambiente (ex.: `ConnectionStrings__AntiFraud`, `RabbitMq__Password`) — ver `src/docker/antifraud/docker-compose.yaml`.
-
-Template de chaves: [`secrets.template.json`](../secrets.template.json).
+Variáveis de ambiente no orchestrator (sem User Secrets). Template: [`secrets.template.json`](../secrets.template.json).

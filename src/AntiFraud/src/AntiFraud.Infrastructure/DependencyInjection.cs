@@ -22,7 +22,12 @@ public static class DependencyInjection
         IConfiguration configuration,
         InfrastructureHostRole hostRole)
     {
-        services.Configure<RabbitMqOptions>(configuration.GetSection(RabbitMqOptions.SectionName));
+        services.AddOptions<RabbitMqOptions>()
+            .Configure<IConfiguration>((options, config) =>
+            {
+                config.GetSection(RabbitMqOptions.SectionName).Bind(options);
+                AspireRabbitMqConfiguration.ApplyConnectionStringIfPresent(options, config);
+            });
         var connectionString = configuration.GetConnectionString("AntiFraud");
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -30,6 +35,8 @@ public static class DependencyInjection
                 "ConnectionStrings:AntiFraud não configurada. Use dotnet user-secrets ou variáveis de ambiente " +
                 "(ver src/AntiFraud/docs/user-secrets.md).");
         }
+
+        connectionString = NpgsqlConnectionStringNormalizer.Normalize(connectionString);
 
         services.AddDbContext<AntiFraudDbContext>(options =>
             options.UseNpgsql(connectionString));
